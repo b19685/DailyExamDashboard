@@ -72,18 +72,27 @@
             </div>
             
             <div class="flex-1 flex overflow-hidden relative">
-                <div id="input-section" class="w-1/3 p-8 bg-slate-50 border-r space-y-6">
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                        <p id="edit-mode-indicator" class="text-blue-700 font-bold text-sm">狀態：新增模式</p>
+                <div id="input-section" class="w-1/3 p-8 bg-slate-50 border-r space-y-6 overflow-y-auto">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-600 mb-2">自訂標題 (日期後方文字)</label>
+                        <input id="custom-header-text" type="text" placeholder="例如：今日考程表" oninput="saveCustomTitle()" class="w-full h-12 rounded-lg border-slate-300 focus:ring-primary shadow-sm">
                     </div>
+
+                    <hr class="border-slate-200">
+
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <p id="edit-mode-indicator" class="text-blue-700 font-bold text-sm">狀態：新增考程模式</p>
+                    </div>
+
                     <div class="space-y-4">
+                        <label class="block text-sm font-bold text-slate-600">設定考程時間</label>
                         <div class="grid grid-cols-2 gap-2"><select id="start-h" class="rounded-lg border-slate-300"></select><select id="start-m" class="rounded-lg border-slate-300"></select></div>
                         <div class="grid grid-cols-2 gap-2"><select id="end-h" class="rounded-lg border-slate-300"></select><select id="end-m" class="rounded-lg border-slate-300"></select></div>
-                        <input id="in-subject" type="text" placeholder="科目名稱" class="w-full h-12 rounded-lg border-slate-300">
-                        <input id="in-note" type="text" placeholder="備註" class="w-full h-12 rounded-lg border-slate-300">
+                        <input id="in-subject" type="text" placeholder="科目名稱" class="w-full h-12 rounded-lg border-slate-300 focus:ring-primary">
+                        <input id="in-note" type="text" placeholder="備註 (選填)" class="w-full h-12 rounded-lg border-slate-300 focus:ring-primary">
                     </div>
-                    <div class="flex gap-2">
-                        <button id="add-btn" onclick="addSchedule()" class="flex-1 bg-primary text-white py-4 rounded-xl font-bold">確認提交</button>
+                    <div class="flex gap-2 pb-4">
+                        <button id="add-btn" onclick="addSchedule()" class="flex-1 bg-primary text-white py-4 rounded-xl font-bold shadow-lg hover:brightness-110">確認提交項目</button>
                         <button id="cancel-edit-btn" onclick="resetInput()" class="hidden w-20 bg-slate-200 text-slate-600 py-4 rounded-xl font-bold">取消</button>
                     </div>
                 </div>
@@ -96,34 +105,51 @@
                     <h3 class="text-xl font-bold">批量數據處理</h3>
                     <textarea id="bulk-text" class="flex-1 w-full rounded-xl border-slate-300 font-mono text-sm p-4"></textarea>
                     <div class="flex justify-end gap-3">
-                        <button onclick="exportToText()" class="px-6 py-2 bg-slate-100 rounded-lg">重新整理匯出</button>
-                        <button onclick="importFromText()" class="px-6 py-2 bg-primary text-white rounded-lg">確認匯入</button>
-                        <button onclick="toggleBulkMode()" class="px-6 py-2 bg-slate-200 rounded-lg">返回</button>
+                        <button onclick="exportToText()" class="px-6 py-2 bg-slate-100 rounded-lg font-bold border">重新整理匯出</button>
+                        <button onclick="importFromText()" class="px-6 py-2 bg-primary text-white rounded-lg font-bold">確認匯入</button>
+                        <button onclick="toggleBulkMode()" class="px-6 py-2 bg-slate-200 rounded-lg font-bold">返回</button>
                     </div>
                 </div>
             </div>
-            <div class="p-6 border-t text-right"><button onclick="closeModal()" class="bg-primary text-white px-12 py-3 rounded-xl font-bold">完成並關閉</button></div>
+            <div class="p-6 border-t text-right bg-white">
+                <button onclick="closeModal()" class="bg-primary text-white px-12 py-3 rounded-xl font-bold text-lg hover:scale-105 transition-all">完成並關閉</button>
+            </div>
         </div>
     </div>
 
     <script>
+        // 初始化資料：增加自訂標題
         let schedules = JSON.parse(localStorage.getItem('exams')) || [];
+        let customTitle = localStorage.getItem('customTitle') || "今日考程表";
         let currentActiveIndex = -1, editingIndex = -1;
 
+        // --- 全螢幕與日期標題控制 ---
         function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
         document.addEventListener('fullscreenchange', () => { document.getElementById('fs-icon').textContent = document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen'; });
         
         function updateDateTitle() {
             const now = new Date();
             const dateStr = `民國 ${now.getFullYear()-1911} 年 ${now.getMonth()+1} 月 ${now.getDate()} 日`;
-            document.getElementById('main-title').textContent = `${dateStr}　　數位考程表`;
+            // 組合日期與自訂標題，中間空兩格
+            document.getElementById('main-title').textContent = `${dateStr}　　${customTitle}`;
         }
 
+        // 儲存自訂標題
+        function saveCustomTitle() {
+            customTitle = document.getElementById('custom-header-text').value;
+            localStorage.setItem('customTitle', customTitle);
+            updateDateTitle();
+        }
+
+        // --- 初始化選單 ---
         function initSelects() {
             const hs = [document.getElementById('start-h'), document.getElementById('end-h')];
             const ms = [document.getElementById('start-m'), document.getElementById('end-m')];
             hs.forEach(s => { for(let i=0; i<24; i++) s.add(new Option(String(i).padStart(2,'0')+'時', String(i).padStart(2,'0'))); });
             ms.forEach(s => { for(let i=0; i<60; i+=5) s.add(new Option(String(i).padStart(2,'0')+'分', String(i).padStart(2,'0'))); });
+            
+            // 載入當前標題到輸入框
+            document.getElementById('custom-header-text').value = customTitle;
             resetInput();
         }
 
@@ -136,49 +162,28 @@
 
         function renderMainTable(currentTime) {
             const tbody = document.getElementById('schedule-tbody');
-            // 排序確保時間線正確
             const sorted = [...schedules].sort((a,b) => a.start.localeCompare(b.start));
             tbody.innerHTML = '';
-            
             sorted.forEach((item, index) => {
-                // 修改處：將 <= 改為 <，這意味著 09:00:00 一到，isActive 就會變成 false
                 const isActive = currentTime >= item.start && currentTime < item.end;
-                
                 const row = document.createElement('tr');
                 if (isActive) {
                     row.className = "active-row bg-white ring-2 ring-primary/10";
-                    if (currentActiveIndex !== index) { 
-                        currentActiveIndex = index; 
-                        setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); 
-                    }
-                } else { 
-                    row.className = "bg-white border border-slate-100 text-slate-400 opacity-60 transition-all duration-500"; 
-                }
-                
-                row.innerHTML = `
-                    <td class="py-8 px-10 text-3xl font-bold ${isActive ? 'text-primary' : ''}">${item.start} - ${item.end}</td>
-                    <td class="py-8 px-10 text-5xl font-bold ${isActive ? 'text-slate-deep' : ''}">${item.subject}</td>
-                    <td class="py-8 px-10 text-2xl font-medium">${item.note}</td>
-                    <td class="pr-10 text-right">
-                        ${isActive ? '<span class="px-6 py-2 rounded-full bg-primary text-white font-bold text-xl inline-block">進行中</span>' : ''}
-                    </td>`;
+                    if (currentActiveIndex !== index) { currentActiveIndex = index; setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }
+                } else { row.className = "bg-white border border-slate-100 text-slate-400 opacity-60 transition-all duration-500"; }
+                row.innerHTML = `<td class="py-8 px-10 text-3xl font-bold ${isActive ? 'text-primary' : ''}">${item.start} - ${item.end}</td><td class="py-8 px-10 text-5xl font-bold ${isActive ? 'text-slate-deep' : ''}">${item.subject}</td><td class="py-8 px-10 text-2xl font-medium">${item.note}</td><td class="pr-10 text-right">${isActive ? '<span class="px-6 py-2 rounded-full bg-primary text-white font-bold text-xl inline-block">進行中</span>' : ''}</td>`;
                 tbody.appendChild(row);
             });
-            
-            // 檢查是否還有任何正在進行的項目
-            if (!sorted.some(it => currentTime >= it.start && currentTime < it.end)) {
-                currentActiveIndex = -1;
-            }
+            if (!sorted.some(it => currentTime >= it.start && currentTime < it.end)) currentActiveIndex = -1;
         }
 
-        // 後台管理相關函數 (與前版本相同)
         function renderAdminList() {
             const list = document.getElementById('admin-list');
             list.innerHTML = '';
             schedules.sort((a,b) => a.start.localeCompare(b.start)).forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = `flex items-center justify-between p-5 rounded-xl border transition-all ${editingIndex === index ? 'border-primary ring-2 ring-primary/10 bg-blue-50' : 'bg-slate-50'}`;
-                div.innerHTML = `<div class="text-xl"><b>${item.start}-${item.end}</b> <span class="ml-4 font-bold text-slate-700">${item.subject}</span></div><div class="flex gap-2"><button onclick="startEdit(${index})" class="text-primary font-bold px-4 py-2 rounded-lg">編輯</button><button onclick="deleteSchedule(${index})" class="text-red-500 font-bold px-4 py-2 rounded-lg">刪除</button></div>`;
+                div.innerHTML = `<div class="text-xl"><b>${item.start}-${item.end}</b> <span class="ml-4 font-bold text-slate-700">${item.subject}</span></div><div class="flex gap-2"><button onclick="startEdit(${index})" class="text-primary font-bold px-4 py-2 rounded-lg border border-transparent hover:border-primary transition-all">編輯</button><button onclick="deleteSchedule(${index})" class="text-red-500 font-bold hover:bg-red-100 px-4 py-2 rounded-lg transition-all">刪除</button></div>`;
                 list.appendChild(div);
             });
             localStorage.setItem('exams', JSON.stringify(schedules));
@@ -193,7 +198,7 @@
             document.getElementById('in-subject').value = item.subject;
             document.getElementById('in-note').value = item.note;
             document.getElementById('add-btn').textContent = "更新項目";
-            document.getElementById('edit-mode-indicator').textContent = "狀態：編輯模式";
+            document.getElementById('edit-mode-indicator').textContent = "狀態：編輯項目模式";
             document.getElementById('cancel-edit-btn').classList.remove('hidden');
             renderAdminList();
         }
@@ -201,8 +206,8 @@
         function resetInput() {
             editingIndex = -1;
             document.getElementById('in-subject').value = ''; document.getElementById('in-note').value = '';
-            document.getElementById('add-btn').textContent = "確認提交";
-            document.getElementById('edit-mode-indicator').textContent = "狀態：新增模式";
+            document.getElementById('add-btn').textContent = "確認提交項目";
+            document.getElementById('edit-mode-indicator').textContent = "狀態：新增考程模式";
             document.getElementById('cancel-edit-btn').classList.add('hidden');
             renderAdminList();
         }
